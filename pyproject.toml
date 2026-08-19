@@ -1,0 +1,25 @@
+[project]
+name = "educore-analytics"
+version = "0.1.0"
+description = "Analyzes student answers from EduCore to detect learning gaps and generate teacher recommendations"
+authors = [
+    {name = "ZhurAlex",email = "265831799+ZhurAlex@users.noreply.github.com"}
+]
+readme = "README.md"
+requires-python = ">=3.14,<3.15"
+dependencies = [
+    "google-genai (>=2.18.1,<3.0.0)",
+    "python-dotenv (>=1.2.3,<2.0.0)",
+    "httpx (>=0.28.1,<0.29.0)",
+    "mistralai (>=2.9.3,<3.0.0)",
+    "fastapi (>=0.141.1,<0.142.0)",
+    "uvicorn (>=0.52.4,<0.53.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+package-mode = false
