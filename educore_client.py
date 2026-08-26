@@ -1,12 +1,10 @@
 import httpx
-from settings import EDUCORE_HOST, EDUCORE_API_KEY
+
+from settings import EDUCORE_API_KEY, EDUCORE_HOST
 
 
-def fetch_test_attempts(
-    subject: str,
-    test_id: int | None = None,
-    student_id: int | None = None,
-    school_class_id: int | None = None
+async def fetch_test_attempts(
+    subject: str, test_id: int | None = None, student_id: int | None = None, school_class_id: int | None = None
 ):
     url = f"{EDUCORE_HOST}/api/test_attempts"
     headers = {"Authorization": f"Bearer {EDUCORE_API_KEY}"}
@@ -17,6 +15,7 @@ def fetch_test_attempts(
         "subject": subject,
     }
 
-    res = httpx.get(url, headers=headers, params=params)
+    async with httpx.AsyncClient() as client:
+        res = await client.get(url, headers=headers, params=params)
     res.raise_for_status()
     return res.json()
