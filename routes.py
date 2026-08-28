@@ -21,20 +21,20 @@ async def get_test_attempts(
 
 
 @router.get("/students/{student_id}/gap-analysis", response_class=PlainTextResponse)
-async def get_students_attempts(student_id: int, subject: str = "english"):
+async def get_students_attempts(student_id: int, language: str = "English", subject: str = "english"):
     responses = await fetch_attempts(subject=subject, student_id=student_id)
     if not responses:
         return "No results for this student"
-    res = await analyse_student(responses)
+    res = await analyse_student(responses, subject=subject, language=language)
     return res.text
 
 
 @router.get("/class/{test_id}/class-analysis", response_class=PlainTextResponse)
-async def get_class_attempts(test_id: int, school_class_id: int):
+async def get_class_attempts(test_id: int, school_class_id: int, language: str = "English", subject: str = "english"):
     responses = await fetch_attempts(test_id=test_id, school_class_id=school_class_id)
     if not responses:
         return "No results for this class"
-    res = await analyse_class(responses)
+    res = await analyse_class(responses, subject=subject, language=language)
     return res.text
 
 

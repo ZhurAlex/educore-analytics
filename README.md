@@ -1,7 +1,38 @@
 # educore-analytics
-Python service that analyzes student answers to detect learning gaps and generate teacher recommendations
 
-EduCore Analytics is a companion service that analyzes long-text student 
-answers from EduCore, identifies recurring learning gaps (grammar, vocabulary, 
-verb tenses, etc.), and generates actionable recommendations for teachers — 
-both at the individual student level and across the whole class.
+Python service that analyzes student answers to detect learning gaps and generate teacher recommendations.
+
+EduCore Analytics is a companion service that reads student test-attempt data from
+[EduCore](https://github.com/ZhurAlex/educore) — every answer type, not just long-text
+ones — identifies recurring learning gaps (grammar, vocabulary, verb tenses, etc.), and
+generates actionable recommendations for teachers, both at the individual student level
+and across the whole class.
+
+## Endpoints
+
+- `GET /students/{student_id}/gap-analysis?subject=...` — one student's history for one
+  subject: recurring mistakes, and topics that were learned then forgotten.
+- `GET /class/{test_id}/class-analysis?school_class_id=...` — one test, whole class:
+  which questions/topics the class struggled with most.
+
+Both return a plain-text recommendation, not JSON.
+
+## Setup
+
+```bash
+poetry install
+
+cp .env.example .env
+# fill in EDUCORE_HOST, EDUCORE_API_KEY (shared secret with educore's ANALYTICS_API_KEY),
+# GEMINI_API_KEY, MISTRAL_API_KEY
+
+poetry run uvicorn main:app --reload
+```
+
+## Tech stack
+
+- **Python 3.14**, [Poetry](https://python-poetry.org/) for dependency management
+- [FastAPI](https://fastapi.tiangolo.com/) + [uvicorn](https://www.uvicorn.org/)
+- [google-genai](https://github.com/googleapis/python-genai) / [mistralai](https://github.com/mistralai/client-python) — LLM providers, Gemini first with a Mistral fallback
+- [httpx](https://www.python-httpx.org/) — async client for `educore`'s API
+- [ruff](https://docs.astral.sh/ruff/) for linting/formatting, checked in CI
