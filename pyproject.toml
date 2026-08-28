@@ -27,7 +27,8 @@ package-mode = false
 [dependency-groups]
 dev = [
     "ruff (>=0.16.4,<0.17.0)",
-    "pytest (>=9.1.1,<10.0.0)"
+    "pytest (>=9.1.1,<10.0.0)",
+    "pytest-cov (>=7.1.0,<8.0.0)"
 ]
 
 [tool.ruff]
@@ -36,3 +37,19 @@ line-length = 120
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "W", "UP"]
+
+[tool.pytest.ini_options]
+minversion = "9.0"
+testpaths = ["tests"]
+pythonpath = ["."]
+python_files = ["test_*.py", "*_test.py"]
+python_functions = ["test_*"]
+addopts = [
+    "-vv"
+]
+
+[tool.coverage.run]
+source = ["app"]
+
+[tool.coverage.report]
+omit = ["tests/*"]

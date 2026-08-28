@@ -32,6 +32,13 @@ poetry run ruff check .               # lint — same check CI runs
 poetry run ruff check --fix .         # autofix what's fixable
 poetry run ruff format .              # format
 poetry run ruff format --check .      # format check — same as CI
+
+poetry run pytest                     # run the test suite — same as CI
+poetry run pytest --cov=app --cov-report=html   # with HTML coverage report;
+                                       # open via `python -m http.server --directory
+                                       # htmlcov`, not a raw file:// URL — the report's
+                                       # inter-page links break under the OS's
+                                       # single-file sandboxed file-open
 ```
 
 ## Architecture

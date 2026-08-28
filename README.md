@@ -29,6 +29,19 @@ cp .env.example .env
 poetry run uvicorn app.main:app --reload
 ```
 
+## Testing
+
+```bash
+poetry run pytest                                  # run the suite
+
+poetry run pytest --cov=app --cov-report=html       # with coverage
+poetry run python -m http.server 8080 --directory htmlcov
+# then open http://localhost:8080/ — NOT the file directly (double-click / file://
+# via xdg-open): the report is a set of HTML files linking to each other, and
+# opening a single one through the OS file-open dialog sandboxes access to just
+# that one file, breaking every link between pages
+```
+
 ## Tech stack
 
 - **Python 3.14**, [Poetry](https://python-poetry.org/) for dependency management
