@@ -26,7 +26,7 @@ cp .env.example .env
 # fill in EDUCORE_HOST, EDUCORE_API_KEY (shared secret with educore's ANALYTICS_API_KEY),
 # GEMINI_API_KEY, MISTRAL_API_KEY
 
-poetry run uvicorn main:app --reload
+poetry run uvicorn app.main:app --reload
 ```
 
 ## Tech stack

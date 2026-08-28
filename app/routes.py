@@ -2,8 +2,8 @@ import httpx
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import PlainTextResponse
 
-from analysis import analyse_class, analyse_student
-from educore_client import fetch_test_attempts
+from app.analysis import analyse_class, analyse_student
+from app.educore_client import fetch_test_attempts
 
 router = APIRouter()
 

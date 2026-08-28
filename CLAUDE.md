@@ -22,8 +22,11 @@ poetry install                        # install deps (+ dev group: ruff)
                                        # GEMINI_API_KEY, MISTRAL_API_KEY — settings.py
                                        # fails fast at import time if any is missing
 
-poetry run uvicorn main:app --reload  # dev server, localhost:8000, auto-reload
-poetry run python main.py             # same, no reload
+poetry run uvicorn app.main:app --reload  # dev server, localhost:8000, auto-reload
+poetry run python -m app.main             # same, no reload — NOT `python app/main.py`:
+                                           # that runs it outside the `app` package, so
+                                           # the absolute imports (`from app.X import Y`)
+                                           # can't resolve
 
 poetry run ruff check .               # lint — same check CI runs
 poetry run ruff check --fix .         # autofix what's fixable
@@ -33,9 +36,14 @@ poetry run ruff format --check .      # format check — same as CI
 
 ## Architecture
 
+All application modules live under `app/` (a plain package — `python -m app.main` or
+`uvicorn app.main:app`, not `python app/main.py`, which runs outside the package and
+breaks the absolute imports below). Tests, once added, live in a separate top-level
+`tests/`, mirroring this layout.
+
 ### Request flow
 
-`routes.py` exposes three endpoints:
+`app/routes.py` exposes three endpoints:
 - `GET /get_test_attempts` — thin passthrough to `educore`'s API, raw JSON. Debug/plumbing
   endpoint, not the product — kept from before the analysis endpoints existed.
 - `GET /students/{student_id}/gap-analysis` — one student's history for one subject,

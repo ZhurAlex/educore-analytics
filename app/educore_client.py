@@ -1,6 +1,6 @@
 import httpx
 
-from settings import EDUCORE_API_KEY, EDUCORE_HOST
+from app.settings import EDUCORE_API_KEY, EDUCORE_HOST
 
 
 async def fetch_test_attempts(
