@@ -31,6 +31,10 @@ poetry run uvicorn app.main:app --reload
 
 ## Testing
 
+No real API keys needed — `tests/conftest.py` loads `.env.test` (dummy values,
+committed to the repo) before any app module is imported, so tests never touch the
+real `.env` or burn real Gemini/Mistral tokens.
+
 ```bash
 poetry run pytest                                  # run the suite
 
@@ -49,3 +53,4 @@ poetry run python -m http.server 8080 --directory htmlcov
 - [google-genai](https://github.com/googleapis/python-genai) / [mistralai](https://github.com/mistralai/client-python) — LLM providers, Gemini first with a Mistral fallback
 - [httpx](https://www.python-httpx.org/) — async client for `educore`'s API
 - [ruff](https://docs.astral.sh/ruff/) for linting/formatting, checked in CI
+- [pytest](https://docs.pytest.org/) + pytest-asyncio + pytest-cov for testing, checked in CI

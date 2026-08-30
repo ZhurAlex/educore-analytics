@@ -45,8 +45,8 @@ poetry run pytest --cov=app --cov-report=html   # with HTML coverage report;
 
 All application modules live under `app/` (a plain package — `python -m app.main` or
 `uvicorn app.main:app`, not `python app/main.py`, which runs outside the package and
-breaks the absolute imports below). Tests, once added, live in a separate top-level
-`tests/`, mirroring this layout.
+breaks the absolute imports below). Tests live in a separate top-level `tests/`,
+mirroring this layout (`tests/test_<module>.py` per `app/<module>.py`).
 
 ### Request flow
 
@@ -92,6 +92,26 @@ to parse further.
   `provider.generate()`. `subject`/`language` are real parameters here, not hardcoded.
 - **`settings.py`** — loads `.env` once and validates every required var is present at
   import time (raises immediately, not deep inside some later HTTP call).
+
+### Tests
+
+- **`tests/conftest.py`** — loads `.env.test` (dummy values, safe to commit) with
+  `override=True` before any test module is collected/imported. Since `settings.py`
+  reads env vars at import time, this must run before `app.settings` is ever pulled in
+  by a test — otherwise a test could silently load the real `.env` and hit real
+  Gemini/Mistral/educore APIs with real credentials. `load_dotenv`'s default
+  `override=False` means this only works because `conftest.py` sets the dummy values
+  *first*, before `settings.py` gets a chance to load the real ones.
+- **`tests/fixtures/`** — shared parametrize data (e.g. `formatting_cases.py`), kept
+  out of `tests/` itself so plain `test_*.py` files stay easy to pick out from a
+  directory listing.
+- Provider tests (`GeminiProvider`/`MistralProvider`) patch the SDK client classes
+  where they're *imported* (`app.providers.Mistral`), not where they're *defined*
+  (`mistralai.client.Mistral`) — `from x import Y` binds a separate name in the
+  importing module, so patching the original definition doesn't affect it.
+- `FallbackProvider` tests use a hand-written `FakeProvider(LLMProvider)` instead of
+  mocking Gemini/Mistral — it only depends on the `LLMProvider` interface, so no SDK
+  mocking is needed to test its retry/fallback logic.
 
 ## Companion project: `../educore`
 
