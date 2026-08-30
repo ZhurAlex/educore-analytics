@@ -15,6 +15,7 @@ async def test_analyse_student(mock_format, mock_generate):
     mock_generate.assert_called_once()
     assert result.text == "Student recommendation"
 
+
 @patch("app.analysis.provider.generate", new_callable=AsyncMock)
 @patch("app.analysis.format_class_responses")
 async def test_analyse_class(mock_format, mock_generate):

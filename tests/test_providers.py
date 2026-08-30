@@ -1,5 +1,5 @@
-from unittest.mock import AsyncMock, MagicMock, patch
 from types import SimpleNamespace
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -53,7 +53,6 @@ async def test_fallback_provider_generate(providers, expected):
     assert await FallbackProvider(providers=providers).generate(text="Test prompt") == expected
 
 
-
 @patch("google.genai.Client")
 async def test_gemini_provider_generate(mock_client_class):
     fake_response = SimpleNamespace(
@@ -69,6 +68,7 @@ async def test_gemini_provider_generate(mock_client_class):
     result = await provider.generate("hello", system="be nice")
 
     assert result == LLMResponse(text="Generated answer", tokens_used=42, provider_name="GeminiProvider")
+
 
 @patch("app.providers.Mistral")
 async def test_mistral_provider_generate(mock_client_class):
