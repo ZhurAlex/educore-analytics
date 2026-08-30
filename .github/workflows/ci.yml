@@ -39,12 +39,6 @@ jobs:
     permissions:
       contents: read
 
-    env:
-      GEMINI_API_KEY: dummy
-      MISTRAL_API_KEY: dummy
-      EDUCORE_HOST: http://127.0.0.1:3000
-      EDUCORE_API_KEY: dummy
-
     steps:
       - name: Check out code
         uses: actions/checkout@v4
