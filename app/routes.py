@@ -1,41 +1,61 @@
 import httpx
-from fastapi import APIRouter, HTTPException
-from fastapi.responses import PlainTextResponse
+import markdown
+from fastapi import APIRouter, HTTPException, Request
+from fastapi.templating import Jinja2Templates
 
 from app.analysis import analyse_class, analyse_student
-from app.educore_client import fetch_test_attempts
+from app.educore_client import fetch_classes, fetch_students, fetch_test_attempts, fetch_tests
 
 router = APIRouter()
+templates = Jinja2Templates(directory="app/templates")
 
 
-@router.get("/get_test_attempts")
-async def get_test_attempts(
-    subject: str | None = None,
-    test_id: int | None = None,
-    student_id: int | None = None,
-    school_class_id: int | None = None,
-):
-    return await fetch_attempts(
-        subject=subject, test_id=test_id, student_id=student_id, school_class_id=school_class_id
-    )
+@router.get("/")
+async def get_root(request: Request):
+    classes = await fetch_classes()
+    classes = sorted(classes, key=lambda cls: cls["name"])
+    return templates.TemplateResponse(request, "classes.html", {"classes": classes})
 
 
-@router.get("/students/{student_id}/gap-analysis", response_class=PlainTextResponse)
-async def get_students_attempts(student_id: int, language: str = "English", subject: str = "english"):
+@router.get("/class/{class_id}/students")
+async def students_list(request: Request, class_id: int, language: str, subject: str):
+    students = await fetch_students(class_id)
+    params = {"students": students, "class_id": class_id, "subject": subject, "language": language}
+    return templates.TemplateResponse(request, "students.html", params)
+
+
+@router.get("/class/{class_id}/tests")
+async def tests_list(request: Request, class_id: int, language: str, subject: str):
+    tests = await fetch_tests(class_id)
+    params = {"tests": tests, "class_id": class_id, "subject": subject, "language": language}
+    return templates.TemplateResponse(request, "tests.html", params)
+
+
+@router.get("/classes/{class_id}")
+async def analysis_configuration(request: Request, class_id: int):
+    return templates.TemplateResponse(request, "analysis_configuration.html", {"class_id": class_id})
+
+
+@router.get("/students/{student_id}/gap-analysis")
+async def get_students_attempts(request: Request, student_id: int, language: str = "English", subject: str = "english"):
     responses = await fetch_attempts(subject=subject, student_id=student_id)
-    if not responses:
-        return "No results for this student"
-    res = await analyse_student(responses, subject=subject, language=language)
-    return res.text
+    return await render_analysis(request, responses, analyse_student, subject, language, "No results for this student")
 
 
-@router.get("/class/{test_id}/class-analysis", response_class=PlainTextResponse)
-async def get_class_attempts(test_id: int, school_class_id: int, language: str = "English", subject: str = "english"):
+@router.get("/class/{test_id}/class-analysis")
+async def get_class_attempts(
+    request: Request, test_id: int, school_class_id: int, language: str = "English", subject: str = "english"
+):
     responses = await fetch_attempts(test_id=test_id, school_class_id=school_class_id)
+    return await render_analysis(request, responses, analyse_class, subject, language, "No results for this class")
+
+
+async def render_analysis(request, responses, analyse_fn, subject, language, no_results_message):
     if not responses:
-        return "No results for this class"
-    res = await analyse_class(responses, subject=subject, language=language)
-    return res.text
+        return templates.TemplateResponse(request, "no_results.html", {"result_message": no_results_message})
+    res = await analyse_fn(responses, subject=subject, language=language)
+    result_html = markdown.markdown(res.text)
+    return templates.TemplateResponse(request, "analysis_results.html", {"res": res, "result_html": result_html})
 
 
 async def fetch_attempts(

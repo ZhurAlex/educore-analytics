@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block title %}Classes — EduCore Analytics{% endblock %}
+
+{% block content %}
+  <h1>Classes</h1>
+
+  {% if classes %}
+    <ul class="card-list">
+      {% for cls in classes %}
+        <li><a href="/classes/{{ cls.id }}">{{ cls.name }}</a></li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="empty-state">No classes found.</p>
+  {% endif %}
+{% endblock %}

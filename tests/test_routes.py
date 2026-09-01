@@ -9,17 +9,58 @@ from app.providers import LLMResponse
 client = TestClient(app)
 
 
+@patch("app.routes.fetch_classes", new_callable=AsyncMock)
+def test_root_route_returns_classes(mock_fetch):
+    mock_fetch.return_value = [{"id": 1, "name": "1-A"}]
+
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/html")
+    assert "1-A" in response.text
+
+
+@patch("app.routes.fetch_students", new_callable=AsyncMock)
+def test_students_list_returns_students(mock_fetch):
+    mock_fetch.return_value = [{"id": 1, "name": "John Doe"}]
+
+    response = client.get("/class/1/students", params={"subject": "english", "language": "English"})
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/html")
+    assert "John Doe" in response.text
+
+
+@patch("app.routes.fetch_tests", new_callable=AsyncMock)
+def test_tests_list_returns_tests(mock_fetch):
+    mock_fetch.return_value = [{"id": 1, "title": "Test 1", "subject": "english"}]
+
+    response = client.get("/class/1/tests", params={"subject": "english", "language": "English"})
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/html")
+    assert "Test 1" in response.text
+
+
+def test_analysis_configuration_route():
+    response = client.get("/classes/1")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/html")
+    assert "/class/1/tests" in response.text
+
+
 @patch("app.routes.analyse_student", new_callable=AsyncMock)
 @patch("app.routes.fetch_test_attempts", new_callable=AsyncMock)
-def test_gap_analysis_returns_plain_text(mock_fetch, mock_analyse):
+def test_gap_analysis_returns_html_text(mock_fetch, mock_analyse):
     mock_fetch.return_value = [{"id": 1}]
     mock_analyse.return_value = LLMResponse(text="Recommendation text", provider_name="X", tokens_used=1)
 
     response = client.get("/students/1/gap-analysis")
 
     assert response.status_code == 200
-    assert response.headers["content-type"].startswith("text/plain")
-    assert response.text == "Recommendation text"
+    assert response.headers["content-type"].startswith("text/html")
+    assert "Recommendation text" in response.text
 
 
 @patch("app.routes.analyse_student", new_callable=AsyncMock)
@@ -42,7 +83,7 @@ def test_gap_analysis_no_results(mock_fetch, mock_analyse):
     response = client.get("/students/1/gap-analysis")
 
     assert response.status_code == 200
-    assert response.text == "No results for this student"
+    assert "No results for this student" in response.text
     mock_analyse.assert_not_called()
 
 
@@ -70,15 +111,15 @@ def test_gap_analysis_propagates_educore_connection_error(mock_fetch):
 
 @patch("app.routes.analyse_class", new_callable=AsyncMock)
 @patch("app.routes.fetch_test_attempts", new_callable=AsyncMock)
-def test_class_analysis_returns_plain_text(mock_fetch, mock_analyse):
+def test_class_analysis_returns_html_text(mock_fetch, mock_analyse):
     mock_fetch.return_value = [{"id": 1}]
     mock_analyse.return_value = LLMResponse(text="Class recommendation", provider_name="X", tokens_used=1)
 
     response = client.get("/class/1/class-analysis", params={"school_class_id": 5})
 
     assert response.status_code == 200
-    assert response.headers["content-type"].startswith("text/plain")
-    assert response.text == "Class recommendation"
+    assert response.headers["content-type"].startswith("text/html")
+    assert "Class recommendation" in response.text
 
 
 @patch("app.routes.analyse_class", new_callable=AsyncMock)
@@ -101,7 +142,7 @@ def test_class_analysis_no_results(mock_fetch, mock_analyse):
     response = client.get("/class/1/class-analysis", params={"school_class_id": 5})
 
     assert response.status_code == 200
-    assert response.text == "No results for this class"
+    assert "No results for this class" in response.text
     mock_analyse.assert_not_called()
 
 
