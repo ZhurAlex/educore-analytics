@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block title %}Tests — EduCore Analytics{% endblock %}
+
+{% block content %}
+  <h1>Tests</h1>
+
+  {% if tests %}
+    <ul class="card-list">
+      {% for test in tests %}
+        <li><a href="/class/{{ test.id }}/class-analysis?school_class_id={{ class_id }}&subject={{ subject }}&language={{ language }}">{{ test.title }}</a></li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="empty-state">No tests found.</p>
+  {% endif %}
+{% endblock %}

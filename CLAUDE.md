@@ -11,8 +11,10 @@ gaps (grammar, vocabulary, verb tense, etc.) and generate teacher-facing
 recommendations, per student and per class. See `README.md` for the one-paragraph pitch.
 
 **Status: MVP working end-to-end.** FastAPI service, stateless — no database; every
-request re-reads from `educore`'s API, nothing persisted here. Two analysis endpoints
-call an LLM (Gemini, falling back to Mistral) and return a plain-text recommendation.
+request re-reads from `educore`'s API, nothing persisted here. A server-rendered web UI
+(Jinja2, no separate frontend build) walks a teacher through class → analysis type →
+student/test → result; the result calls an LLM (Gemini, falling back to Mistral) and
+renders the markdown recommendation as HTML.
 
 ## Commands
 
@@ -50,26 +52,51 @@ mirroring this layout (`tests/test_<module>.py` per `app/<module>.py`).
 
 ### Request flow
 
-`app/routes.py` exposes three endpoints:
-- `GET /get_test_attempts` — thin passthrough to `educore`'s API, raw JSON. Debug/plumbing
-  endpoint, not the product — kept from before the analysis endpoints existed.
-- `GET /students/{student_id}/gap-analysis` — one student's history for one subject,
-  analyzed for recurring mistakes and *forgetting* (a topic answered correctly in one
-  attempt, wrong again in a later one).
-- `GET /class/{test_id}/class-analysis` — one test, whole class: which questions/topics
-  the class struggled with most, aggregated in code before ever reaching the LLM.
+`app/routes.py` renders a page flow, no JSON API surface — every route returns HTML
+via `Jinja2Templates` (`app/templates/`), no `response_class` overrides needed since
+`TemplateResponse` is returned directly:
 
-Both analysis endpoints return `PlainTextResponse`, not JSON — the payload is a
-markdown recommendation meant for a teacher to read, not structured data for a program
-to parse further.
+1. `GET /` — list of school classes (`classes.html`), from `fetch_classes()`.
+2. `GET /classes/{class_id}` — pick analysis type + `subject` + `language`
+   (`analysis_configuration.html`): one `<form method="get">` with two submit buttons,
+   each carrying a different `formaction` (`/class/{id}/students` or
+   `/class/{id}/tests`) — the `<select>` values ride along as query params on
+   whichever button was clicked, no JS needed.
+3. `GET /class/{class_id}/students` / `GET /class/{class_id}/tests` — list of
+   students/tests for that class (`students.html`/`tests.html`), `subject`/`language`
+   threaded through as query params to the next step's links.
+4. `GET /students/{student_id}/gap-analysis` / `GET /class/{test_id}/class-analysis` —
+   runs the actual analysis. Shared by `render_analysis()`: empty `responses` →
+   `no_results.html`; otherwise calls the given `analyse_student`/`analyse_class`
+   function, converts the LLM's markdown reply to HTML (`markdown.markdown()`), then
+   **sanitizes it** through `bleach.clean()` (allow-list of tags/attributes,
+   `ALLOWED_RESULT_TAGS`/`ALLOWED_RESULT_ATTRIBUTES` in `routes.py`) before rendering
+   `analysis_results.html` with `{{ result_html | safe }}`. The sanitizing step matters
+   because the LLM's reply isn't trusted content — its prompt is built from student
+   answer text (`formatting.py`), so a student could type something that gets echoed
+   back into the LLM's output and, without sanitizing, rendered as live HTML/JS in a
+   teacher's browser. `| safe` opts out of Jinja2's default auto-escaping — safe here
+   specifically because `bleach.clean()` already ran, not because the content is
+   inherently trustworthy.
+
+`get_students_attempts`/`get_class_attempts` differ only in which `fetch_attempts`
+filters and which `analyse_*` function to call — `render_analysis()` takes the
+analyse function as a plain argument (functions are first-class values) rather than
+duplicating the fetch → empty-check → analyse → render sequence twice.
 
 ### Module boundaries
 
-- **`educore_client.py`** — the only place that speaks HTTP to `educore`'s
-  `/api/test_attempts`. Deliberately has no FastAPI import — raises plain `httpx`
-  exceptions rather than `HTTPException`, so it isn't tied to this web framework and
-  could be reused outside it. `routes.py` is where those exceptions get translated
-  into HTTP responses.
+- **`educore_client.py`** — the only place that speaks HTTP to `educore`'s API:
+  `fetch_test_attempts`, `fetch_classes`, `fetch_students`, `fetch_tests`, all thin
+  wrappers around a shared `make_request(url, params=None)` (note the `None` default,
+  not `{}` — a mutable default arg would be shared across every call that doesn't pass
+  one). Deliberately has no FastAPI import — raises plain `httpx` exceptions rather
+  than `HTTPException`, so it isn't tied to this web framework and could be reused
+  outside it. `routes.py` is where those exceptions get translated into HTTP responses.
+- **`app/templates/`** (Jinja2) — `base.html` holds the shared `<head>`/layout;
+  every page template does `{% extends "base.html" %}` and fills `content`/`title`
+  blocks, so no page repeats boilerplate markup. `app/static/style.css` is mounted at
+  `/static` in `main.py`.
 - **`formatting.py`** — turns the raw JSON from `educore` into the plain-text blob that
   goes into the LLM prompt. Two independent paths:
   - `format_student_responses` — chronological, includes **every** response (not just
@@ -136,11 +163,17 @@ Relevant pieces for this project specifically:
   (`in_progress`/`evaluating`/`completed`), `score`, `grade`, `started_at`
 - `Student`/`SchoolClass` — for grouping detected error patterns per student and per class
 
-**Data access: via API, built.** `GET /api/test_attempts`, token auth
-(`Authorization: Bearer <token>` — the same secret value must be set in both
-projects' env; `educore` calls it `ANALYTICS_API_KEY`, this project stores it as
-`EDUCORE_API_KEY` in `.env`/`settings.py`), filterable by
-`test_id`/`student_id`/`school_class_id`/`subject`.
+**Data access: via API, built.** `GET /api/test_attempts` (filterable by
+`test_id`/`student_id`/`school_class_id`/`subject`), plus three lookup endpoints that
+back this project's own UI — `GET /api/school_classes`, `GET /api/tests`,
+`GET /api/students` (the latter two take an optional `school_class_id` filter, for the
+class → tests/students cascade in `routes.py`). `GET /api/tests?school_class_id=X`
+returns tests *assigned* to the class (`Test#for_school_class`, via
+`test_assignments`), not only tests actually attempted — a deliberate choice on the
+`educore` side, not a bug to route around here. Token auth (`Authorization: Bearer
+<token>` — the same secret value must be set in both projects' env; `educore` calls it
+`ANALYTICS_API_KEY`, this project stores it as `EDUCORE_API_KEY` in
+`.env`/`settings.py`).
 Full contract, including the exact response shape and known gaps (no pagination, no
 versioning yet):
 

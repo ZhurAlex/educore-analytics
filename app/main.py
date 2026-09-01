@@ -1,9 +1,11 @@
 import uvicorn
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 
 from app.routes import router
 
 app = FastAPI(title="Educore analytics tool")
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
 app.include_router(router)
 
 if __name__ == "__main__":

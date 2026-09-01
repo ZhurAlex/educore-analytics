@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block title %}Students — EduCore Analytics{% endblock %}
+
+{% block content %}
+  <h1>Students</h1>
+
+  {% if students %}
+    <ul class="card-list">
+      {% for student in students %}
+        <li><a href="/students/{{ student.id }}/gap-analysis?subject={{ subject }}&language={{ language }}">{{ student.name }}</a></li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="empty-state">No students found.</p>
+  {% endif %}
+{% endblock %}
