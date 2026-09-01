@@ -130,7 +130,7 @@ def test_class_analysis_passes_subject_and_language(mock_fetch, mock_analyse):
 
     client.get("/class/1/class-analysis", params={"school_class_id": 5, "subject": "math", "language": "English"})
 
-    mock_fetch.assert_called_once_with(subject=None, test_id=1, student_id=None, school_class_id=5)
+    mock_fetch.assert_called_once_with(subject="math", test_id=1, student_id=None, school_class_id=5)
     mock_analyse.assert_called_once_with([{"id": 1}], subject="math", language="English")
 
 

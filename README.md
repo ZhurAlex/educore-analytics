@@ -61,5 +61,6 @@ poetry run python -m http.server 8080 --directory htmlcov
 - [httpx](https://www.python-httpx.org/) — async client for `educore`'s API
 - [Jinja2](https://jinja.palletsprojects.com/) — server-rendered HTML, no separate frontend
 - [Python-Markdown](https://python-markdown.github.io/) — renders the LLM's markdown reply as HTML
+- [bleach](https://github.com/mozilla/bleach) — sanitizes that HTML (allow-list) before rendering, since the LLM's reply isn't trusted content
 - [ruff](https://docs.astral.sh/ruff/) for linting/formatting, checked in CI
 - [pytest](https://docs.pytest.org/) + pytest-asyncio + pytest-cov for testing, checked in CI

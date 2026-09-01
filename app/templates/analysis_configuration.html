@@ -5,11 +5,13 @@
 {% block content %}
   <h1>Which analysis would you like to do?</h1>
     <form method="get">
+        <label for="subject">Subject</label>
         <select id="subject" name="subject" required="true">
             <option value="" disabled selected>Chose subject</option>
             <option value="english">English</option>
             <option value="math">Math</option>
         </select>
+        <label for="language">Language</label>
         <select id="language" name="language" required="true">
             <option value="" disabled selected>Chose language</option>
             <option value="english">English</option>

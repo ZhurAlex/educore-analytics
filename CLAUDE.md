@@ -68,10 +68,16 @@ via `Jinja2Templates` (`app/templates/`), no `response_class` overrides needed s
 4. `GET /students/{student_id}/gap-analysis` / `GET /class/{test_id}/class-analysis` —
    runs the actual analysis. Shared by `render_analysis()`: empty `responses` →
    `no_results.html`; otherwise calls the given `analyse_student`/`analyse_class`
-   function, converts the LLM's markdown reply to HTML (`markdown.markdown()`), and
-   renders `analysis_results.html` with `{{ result_html | safe }}` (`| safe` — Jinja2
-   escapes HTML by default, this opts out since `result_html` is already-sanitized
-   markdown output, not user input).
+   function, converts the LLM's markdown reply to HTML (`markdown.markdown()`), then
+   **sanitizes it** through `bleach.clean()` (allow-list of tags/attributes,
+   `ALLOWED_RESULT_TAGS`/`ALLOWED_RESULT_ATTRIBUTES` in `routes.py`) before rendering
+   `analysis_results.html` with `{{ result_html | safe }}`. The sanitizing step matters
+   because the LLM's reply isn't trusted content — its prompt is built from student
+   answer text (`formatting.py`), so a student could type something that gets echoed
+   back into the LLM's output and, without sanitizing, rendered as live HTML/JS in a
+   teacher's browser. `| safe` opts out of Jinja2's default auto-escaping — safe here
+   specifically because `bleach.clean()` already ran, not because the content is
+   inherently trustworthy.
 
 `get_students_attempts`/`get_class_attempts` differ only in which `fetch_attempts`
 filters and which `analyse_*` function to call — `render_analysis()` takes the
