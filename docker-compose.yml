@@ -1,5 +1,5 @@
 services:
-  db:
+  analytics_db:
     image: pgvector/pgvector:pg16
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
