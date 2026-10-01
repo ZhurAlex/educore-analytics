@@ -16,6 +16,11 @@ request re-reads from `educore`'s API, nothing persisted here. A server-rendered
 student/test → result; the result calls an LLM (Gemini, falling back to Mistral) and
 renders the markdown recommendation as HTML.
 
+**In progress:** RAG-based homework generation (uses identified gaps to retrieve
+relevant textbook sections and generate personalized homework) — the first feature that
+needs persistence (Postgres + `pgvector`, breaking the stateless design above on
+purpose). Plan: `docs/RAG_PLAN.md`.
+
 ## Commands
 
 ```bash
