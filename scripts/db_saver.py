@@ -41,6 +41,7 @@ def create_exercise(exercise_data, chapter, embeddings_model):
         number=exercise_data["number"],
         page=exercise_data["page"],
         sub_topic=exercise_data.get("sub_topic"),
+        embedded_sub_topic=embed_text(exercise_data["sub_topic"], embeddings_model) if exercise_data.get("sub_topic") else None,
         task_type=exercise_data["task_type"],
         text=exercise_data["text"],
         rule=exercise_data.get("rule"),
@@ -73,6 +74,19 @@ async def main():
         chapter.exercises = [create_exercise(ex_data, chapter, embeddings) for ex_data in chapter_data["exercises"]]
         await save_chapter_and_exercises(chapter)
 
+# fill in the embedded_sub_topic column for existing exercises after the column has been added to the database
+async def fill_sub_topic_embeddings():
+    embeddings = get_embeddings_model()
+    async with async_session() as session:
+        result = await session.execute(select(Exercise).where(Exercise.sub_topic.isnot(None)))
+        exercises = result.scalars().all()
+        for exercise in exercises:
+            if exercise.embedded_sub_topic is None:
+                exercise.embedded_sub_topic = embed_text(exercise.sub_topic, embeddings)
+                await session.commit()
+                print(f"Updated embedded_sub_topic for exercise {exercise.number}")
+
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    # asyncio.run(main())
+    asyncio.run(fill_sub_topic_embeddings())

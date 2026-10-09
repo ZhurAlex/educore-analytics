@@ -77,10 +77,7 @@ async def render_analysis(request, responses, analyse_fn, subject, language, no_
     if not responses:
         return templates.TemplateResponse(request, "no_results.html", {"result_message": no_results_message})
     res = await analyse_fn(responses, subject=subject, language=language)
-    result_html = bleach.clean(
-        markdown.markdown(res.text), tags=ALLOWED_RESULT_TAGS, attributes=ALLOWED_RESULT_ATTRIBUTES, strip=True
-    )
-    return templates.TemplateResponse(request, "analysis_results.html", {"res": res, "result_html": result_html})
+    return templates.TemplateResponse(request, "analysis_results.html", {"analysis_results": res})
 
 
 async def fetch_attempts(

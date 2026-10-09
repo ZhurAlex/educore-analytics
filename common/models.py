@@ -22,6 +22,7 @@ class Exercise(Base):
     number: Mapped[int] = mapped_column(nullable=False)
     page: Mapped[int] = mapped_column(nullable=False)
     sub_topic: Mapped[str] = mapped_column(Text, nullable=True)
+    embedded_sub_topic: Mapped[list[float]] = mapped_column(Vector(768), nullable=True)
     task_type: Mapped[str] = mapped_column(Text, nullable=False)
     text: Mapped[str] = mapped_column(Text, nullable=False)
     rule: Mapped[str] = mapped_column(Text, nullable=True)
