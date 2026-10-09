@@ -18,17 +18,6 @@ inventing a trend.
 - Respond in {language}.
 - Be specific: not "grammar problems", but "confuses Present Perfect and \
 Past Simple in questions about completed actions".
-
-Format your answer with these headings:
-
-**Repeated mistakes:**
-...
-
-**Forgotten topics:**
-...
-
-**Recommendation:**
-...
 """
 
 CLASS_GAP_ANALYSIS_PROMPT = """\
@@ -50,12 +39,4 @@ inventing problems.
 - Respond in {language}.
 - Be specific: not "grammar problems", but "most of the class confuses \
 Present Perfect and Past Simple in questions about completed actions".
-
-Format your answer with these headings:
-
-**Weakest topics:**
-...
-
-**Recommendation:**
-...
 """

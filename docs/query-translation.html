@@ -1,0 +1,407 @@
+<title>Query Translation</title>
+<style>
+  :root{
+    --bg:#f9f9fb;
+    --grid-dot: rgba(35,40,58,0.08);
+    --ink:#23283a;
+    --ink-soft:#5b6178;
+    --card-bg:#ffffff;
+    --note-bg:#fffbe9;
+    --note-ink:#6b5d1f;
+    --accent-mq:#3b6fe0;
+    --accent-mq-soft:#e8effd;
+    --accent-rf:#8452d6;
+    --accent-rf-soft:#f1e9fc;
+    --accent-dc:#d9820f;
+    --accent-dc-soft:#fdf0dd;
+    --accent-sb:#1e9e7b;
+    --accent-sb-soft:#e1f6ef;
+    --accent-hy:#d43e86;
+    --accent-hy-soft:#fbe6f0;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#1a2030;
+      --grid-dot: rgba(255,255,255,0.07);
+      --ink:#eceef5;
+      --ink-soft:#a9afc4;
+      --card-bg:#222a3d;
+      --note-bg:#2c2712;
+      --note-ink:#e4cf7a;
+      --accent-mq:#87abff;
+      --accent-mq-soft:#26304a;
+      --accent-rf:#c1a4ff;
+      --accent-rf-soft:#2e2748;
+      --accent-dc:#ffb35c;
+      --accent-dc-soft:#3a2c17;
+      --accent-sb:#5fe3b8;
+      --accent-sb-soft:#173a30;
+      --accent-hy:#ff8dc0;
+      --accent-hy-soft:#3a1e2c;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#1a2030;
+    --grid-dot: rgba(255,255,255,0.07);
+    --ink:#eceef5;
+    --ink-soft:#a9afc4;
+    --card-bg:#222a3d;
+    --note-bg:#2c2712;
+    --note-ink:#e4cf7a;
+    --accent-mq:#87abff;
+    --accent-mq-soft:#26304a;
+    --accent-rf:#c1a4ff;
+    --accent-rf-soft:#2e2748;
+    --accent-dc:#ffb35c;
+    --accent-dc-soft:#3a2c17;
+    --accent-sb:#5fe3b8;
+    --accent-sb-soft:#173a30;
+    --accent-hy:#ff8dc0;
+    --accent-hy-soft:#3a1e2c;
+  }
+
+  @import url('https://fonts.googleapis.com/css2?family=Patrick+Hand&family=Karla:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
+
+  *{box-sizing:border-box;}
+  body{
+    background:var(--bg);
+    background-image: radial-gradient(var(--grid-dot) 1.4px, transparent 1.4px);
+    background-size: 24px 24px;
+    color:var(--ink);
+    font-family:'Karla', sans-serif;
+    padding-inline: 16px;
+    padding-block: 28px 40px;
+  }
+  .page{ max-width: 1180px; margin: 0 auto; }
+
+  .masthead{ text-align:center; margin-bottom: 30px; }
+  .masthead h1{
+    font-family:'Patrick Hand', cursive;
+    font-weight:400;
+    font-size: clamp(2.2rem, 5vw, 3.4rem);
+    margin: 0 0 6px;
+    text-wrap: balance;
+    letter-spacing: 0.5px;
+  }
+  .masthead p{
+    color: var(--ink-soft);
+    font-size: 1.02rem;
+    margin: 0;
+    font-style: italic;
+  }
+
+  .source-chip{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    width:max-content;
+    margin: 0 auto 34px;
+    padding: 10px 20px;
+    background:var(--card-bg);
+    border: 2px solid var(--ink);
+    border-radius: 999px;
+    font-family:'Patrick Hand', cursive;
+    font-size: 1.15rem;
+  }
+  .source-chip svg{ width:22px; height:22px; flex:none; color:var(--ink-soft); }
+
+  .fan{ display:flex; justify-content:center; margin: -20px 0 8px; color: var(--ink-soft); }
+  .fan svg{ width: 140px; height: 34px; }
+
+  .grid{
+    display:grid;
+    grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+    gap: 22px;
+    align-items: start;
+  }
+
+  .card{
+    background: var(--card-bg);
+    border: 2.5px dashed var(--accent);
+    padding: 18px 18px 20px;
+    display:flex;
+    flex-direction:column;
+    gap: 10px;
+  }
+  .card--mq{ --accent: var(--accent-mq); --accent-soft: var(--accent-mq-soft); border-radius: 22px 10px 22px 10px; }
+  .card--rf{ --accent: var(--accent-rf); --accent-soft: var(--accent-rf-soft); border-radius: 10px 22px 10px 22px; }
+  .card--dc{ --accent: var(--accent-dc); --accent-soft: var(--accent-dc-soft); border-radius: 22px 22px 10px 10px; }
+  .card--sb{ --accent: var(--accent-sb); --accent-soft: var(--accent-sb-soft); border-radius: 10px 10px 22px 22px; }
+  .card--hy{ --accent: var(--accent-hy); --accent-soft: var(--accent-hy-soft); border-radius: 18px 18px 18px 4px; }
+
+  .card-head{ display:flex; align-items:center; gap:10px; }
+  .card-icon{
+    width:38px; height:38px; flex:none;
+    display:flex; align-items:center; justify-content:center;
+    background: var(--accent-soft);
+    border-radius: 50%;
+    color: var(--accent);
+  }
+  .card-icon svg{ width:22px; height:22px; }
+  .card-head h2{
+    font-family:'Patrick Hand', cursive;
+    font-weight:400;
+    font-size: 1.5rem;
+    margin:0;
+    color: var(--accent);
+  }
+
+  figure{ margin:0; }
+  .diagram{ width:100%; height:auto; color: var(--ink-soft); }
+  .diagram .accent{ color: var(--accent); }
+  figcaption{
+    font-size: 0.88rem;
+    color: var(--ink-soft);
+    margin-top: 4px;
+  }
+  figcaption strong{ color: var(--ink); font-weight:600; }
+
+  .example{
+    background: var(--note-bg);
+    color: var(--note-ink);
+    font-size: 0.9rem;
+    padding: 10px 12px;
+    border-radius: 3px 14px 3px 14px;
+    box-shadow: 1px 2px 0 rgba(0,0,0,0.06);
+    transform: rotate(-0.6deg);
+  }
+  .card--rf .example, .card--sb .example{ transform: rotate(0.6deg); }
+  .example b{ font-family:'Patrick Hand', cursive; font-weight:400; font-size:1rem; }
+
+  .takeaway{
+    margin-top: 34px;
+    border: 2.5px solid var(--accent-dc);
+    border-radius: 6px 20px 6px 20px;
+    background: var(--accent-dc-soft);
+    padding: 16px 20px;
+    display:flex;
+    gap: 14px;
+    align-items:flex-start;
+    max-width: 720px;
+    margin-inline: auto;
+  }
+  .takeaway svg{ width:26px; height:26px; flex:none; color:var(--accent-dc); margin-top:2px; }
+  .takeaway p{ margin:0; font-size: 0.98rem; line-height:1.45; }
+  .takeaway b{ font-family:'Patrick Hand', cursive; font-weight:400; font-size:1.1rem; color: var(--accent-dc); }
+
+  .credit{
+    text-align:center;
+    color: var(--ink-soft);
+    font-size: 0.82rem;
+    margin-top: 22px;
+  }
+
+  svg text{ font-family:'Karla', sans-serif; }
+</style>
+
+<div class="page">
+
+  <div class="masthead">
+    <h1>Query Translation</h1>
+    <p>пять способов переформулировать запрос до поиска — конспект по мотивам RAG From Scratch</p>
+  </div>
+
+  <div class="source-chip">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.2 9a2.8 2.8 0 0 1 5.4 1c0 1.8-2.6 1.8-2.6 3.6"/><circle cx="12" cy="16.6" r="0.4" fill="currentColor"/></svg>
+    выявленный пробел ученика
+  </div>
+
+  <div class="fan" aria-hidden="true">
+    <svg viewBox="0 0 140 34"><path d="M70 0 L18 30 M70 0 L45 32 M70 0 L70 33 M70 0 L95 32 M70 0 L122 30" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="3 4"/></svg>
+  </div>
+
+  <main class="grid">
+
+    <article class="card card--mq">
+      <div class="card-head">
+        <span class="card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h4"/><path d="M12 4l7 4-7 4"/><path d="M12 12l7 4-7 4"/><path d="M12 12v8"/></svg>
+        </span>
+        <h2>Multi-Query</h2>
+      </div>
+      <figure>
+        <svg class="diagram" viewBox="0 0 300 118" role="img" aria-label="Один вопрос через LLM превращается в три формулировки, которые ищутся отдельно и объединяются">
+          <defs><marker id="aMQ" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="currentColor"/></marker></defs>
+          <g class="accent">
+            <rect x="4" y="42" width="58" height="34" rx="6" fill="none" stroke="currentColor" stroke-width="2"/>
+            <text x="33" y="63" text-anchor="middle" font-size="11" fill="currentColor">Вопрос</text>
+          </g>
+          <line x1="62" y1="59" x2="90" y2="59" stroke="currentColor" stroke-width="1.6" marker-end="url(#aMQ)"/>
+          <circle cx="108" cy="59" r="20" fill="none" stroke="currentColor" stroke-width="2"/>
+          <text x="108" y="63" text-anchor="middle" font-size="11" fill="currentColor">LLM</text>
+          <line x1="128" y1="52" x2="188" y2="15" stroke="currentColor" stroke-width="1.4" marker-end="url(#aMQ)"/>
+          <line x1="128" y1="59" x2="188" y2="59" stroke="currentColor" stroke-width="1.4" marker-end="url(#aMQ)"/>
+          <line x1="128" y1="66" x2="188" y2="103" stroke="currentColor" stroke-width="1.4" marker-end="url(#aMQ)"/>
+          <g class="accent">
+            <rect x="190" y="5" width="34" height="20" rx="4" fill="none" stroke="currentColor" stroke-width="1.8"/>
+            <text x="207" y="19" text-anchor="middle" font-size="10" fill="currentColor">1</text>
+            <rect x="190" y="49" width="34" height="20" rx="4" fill="none" stroke="currentColor" stroke-width="1.8"/>
+            <text x="207" y="63" text-anchor="middle" font-size="10" fill="currentColor">2</text>
+            <rect x="190" y="93" width="34" height="20" rx="4" fill="none" stroke="currentColor" stroke-width="1.8"/>
+            <text x="207" y="107" text-anchor="middle" font-size="10" fill="currentColor">3</text>
+          </g>
+          <line x1="224" y1="15" x2="256" y2="53" stroke="currentColor" stroke-width="1.2" marker-end="url(#aMQ)"/>
+          <line x1="224" y1="59" x2="256" y2="59" stroke="currentColor" stroke-width="1.2" marker-end="url(#aMQ)"/>
+          <line x1="224" y1="103" x2="256" y2="65" stroke="currentColor" stroke-width="1.2" marker-end="url(#aMQ)"/>
+          <g class="accent">
+            <rect x="258" y="44" width="38" height="30" rx="6" fill="none" stroke="currentColor" stroke-width="2"/>
+            <text x="277" y="63" text-anchor="middle" font-size="9.5" fill="currentColor">без</text>
+            <text x="277" y="74" text-anchor="middle" font-size="9.5" fill="currentColor">дублей</text>
+          </g>
+        </svg>
+        <figcaption><strong>Зачем:</strong> эмбеддинг чувствителен к формулировке — разные варианты цепляют разные документы.</figcaption>
+      </figure>
+      <div class="example"><b>Пример:</b> «чем отличается Present Perfect от Past Simple» → 3 формулировки → результаты объединяются без повторов.</div>
+    </article>
+
+    <article class="card card--rf">
+      <div class="card-head">
+        <span class="card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16"/><path d="M6 5l6 7v7l4-2v-5l6-7"/></svg>
+        </span>
+        <h2>RAG-Fusion</h2>
+      </div>
+      <figure>
+        <svg class="diagram" viewBox="0 0 300 118" role="img" aria-label="Три ранжированных списка проходят через reciprocal rank fusion и дают один итоговый список">
+          <defs><marker id="aRF" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="currentColor"/></marker></defs>
+          <g class="accent">
+            <rect x="2" y="6" width="60" height="14" rx="3" fill="none" stroke="currentColor" stroke-width="1.6"/>
+            <text x="8" y="16" font-size="9" fill="currentColor">1 —</text>
+            <rect x="2" y="23" width="46" height="14" rx="3" fill="none" stroke="currentColor" stroke-width="1.6"/>
+            <text x="8" y="33" font-size="9" fill="currentColor">2 —</text>
+            <rect x="2" y="40" width="52" height="14" rx="3" fill="none" stroke="currentColor" stroke-width="1.6"/>
+            <text x="8" y="50" font-size="9" fill="currentColor">3 —</text>
+          </g>
+          <g class="accent">
+            <rect x="2" y="62" width="52" height="14" rx="3" fill="none" stroke="currentColor" stroke-width="1.6"/>
+            <text x="8" y="72" font-size="9" fill="currentColor">1 —</text>
+            <rect x="2" y="79" width="60" height="14" rx="3" fill="none" stroke="currentColor" stroke-width="1.6"/>
+            <text x="8" y="89" font-size="9" fill="currentColor">2 —</text>
+            <rect x="2" y="96" width="44" height="14" rx="3" fill="none" stroke="currentColor" stroke-width="1.6"/>
+            <text x="8" y="106" font-size="9" fill="currentColor">3 —</text>
+          </g>
+          <line x1="64" y1="30" x2="112" y2="55" stroke="currentColor" stroke-width="1.3" marker-end="url(#aRF)"/>
+          <line x1="64" y1="85" x2="112" y2="62" stroke="currentColor" stroke-width="1.3" marker-end="url(#aRF)"/>
+          <path d="M114 40 L150 58 L114 78 Z" fill="none" stroke="currentColor" stroke-width="2" class="accent"/>
+          <text x="126" y="62" font-size="9.5" fill="currentColor" class="accent">RRF</text>
+          <line x1="150" y1="58" x2="182" y2="58" stroke="currentColor" stroke-width="1.6" marker-end="url(#aRF)"/>
+          <g class="accent">
+            <rect x="186" y="20" width="100" height="14" rx="3" fill="none" stroke="currentColor" stroke-width="1.8"/>
+            <text x="192" y="30" font-size="9.5" fill="currentColor">1 — самый частый</text>
+            <rect x="186" y="38" width="80" height="14" rx="3" fill="none" stroke="currentColor" stroke-width="1.6"/>
+            <text x="192" y="48" font-size="9" fill="currentColor">2 —</text>
+            <rect x="186" y="56" width="70" height="14" rx="3" fill="none" stroke="currentColor" stroke-width="1.6"/>
+            <text x="192" y="66" font-size="9" fill="currentColor">3 —</text>
+          </g>
+        </svg>
+        <figcaption><strong>Формула:</strong> балл = сумма 1/(k + позиция) по всем спискам — важна не только частота, но и место.</figcaption>
+      </figure>
+      <div class="example"><b>Пример:</b> документ на 2-м месте в списке 1 и на 4-м в списке 3 обгонит документ, попавший на 1-е место только один раз.</div>
+    </article>
+
+    <article class="card card--dc">
+      <div class="card-head">
+        <span class="card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v6"/><path d="M12 9l-6 6"/><path d="M12 9l6 6"/><circle cx="6" cy="18" r="2.4"/><circle cx="18" cy="18" r="2.4"/></svg>
+        </span>
+        <h2>Decomposition</h2>
+      </div>
+      <figure>
+        <svg class="diagram" viewBox="0 0 300 118" role="img" aria-label="Сложный вопрос разбивается на два независимых под-вопроса, каждый ищется отдельно">
+          <defs><marker id="aDC" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="currentColor"/></marker></defs>
+          <g class="accent">
+            <rect x="4" y="42" width="86" height="34" rx="6" fill="none" stroke="currentColor" stroke-width="2"/>
+            <text x="47" y="58" text-anchor="middle" font-size="10" fill="currentColor">сложный</text>
+            <text x="47" y="70" text-anchor="middle" font-size="10" fill="currentColor">вопрос</text>
+          </g>
+          <line x1="90" y1="52" x2="150" y2="20" stroke="currentColor" stroke-width="1.6" marker-end="url(#aDC)"/>
+          <line x1="90" y1="66" x2="150" y2="98" stroke="currentColor" stroke-width="1.6" marker-end="url(#aDC)"/>
+          <g class="accent">
+            <rect x="154" y="4" width="140" height="30" rx="6" fill="none" stroke="currentColor" stroke-width="2"/>
+            <text x="224" y="23" text-anchor="middle" font-size="10" fill="currentColor">под-вопрос: времена</text>
+            <rect x="154" y="84" width="140" height="30" rx="6" fill="none" stroke="currentColor" stroke-width="2"/>
+            <text x="224" y="103" text-anchor="middle" font-size="10" fill="currentColor">под-вопрос: глаголы</text>
+          </g>
+        </svg>
+        <figcaption><strong>Два режима:</strong> параллельно (под-вопросы независимы) или последовательно (второй зависит от ответа на первый).</figcaption>
+      </figure>
+      <div class="example"><b>Пример:</b> «подтянуть времена и неправильные глаголы» → два отдельных запроса, каждый находит своё.</div>
+    </article>
+
+    <article class="card card--sb">
+      <div class="card-head">
+        <span class="card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="15" r="3.4"/><circle cx="15" cy="8" r="5.6"/></svg>
+        </span>
+        <h2>Step-Back</h2>
+      </div>
+      <figure>
+        <svg class="diagram" viewBox="0 0 300 118" role="img" aria-label="Конкретный вопрос внизу и более общий вопрос сверху — оба используются для поиска и объединяются">
+          <defs><marker id="aSB" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="currentColor"/></marker></defs>
+          <g class="accent">
+            <rect x="130" y="6" width="150" height="34" rx="8" fill="none" stroke="currentColor" stroke-width="2.2"/>
+            <text x="205" y="20" text-anchor="middle" font-size="10" fill="currentColor">в чём разница Present</text>
+            <text x="205" y="32" text-anchor="middle" font-size="10" fill="currentColor">Perfect и Past Simple</text>
+          </g>
+          <g>
+            <rect x="4" y="70" width="150" height="30" rx="6" fill="none" stroke="currentColor" stroke-width="1.8"/>
+            <text x="79" y="83" text-anchor="middle" font-size="9.5" fill="currentColor">почему не «I did my</text>
+            <text x="79" y="94" text-anchor="middle" font-size="9.5" fill="currentColor">homework», а «I have done»</text>
+          </g>
+          <path d="M60 70 C 90 40, 110 30, 128 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-dasharray="4 3" marker-end="url(#aSB)"/>
+          <line x1="154" y1="85" x2="250" y2="85" stroke="currentColor" stroke-width="1.6" marker-end="url(#aSB)"/>
+          <line x1="205" y1="40" x2="255" y2="78" stroke="currentColor" stroke-width="1.6" marker-end="url(#aSB)"/>
+          <g class="accent">
+            <rect x="256" y="70" width="40" height="30" rx="6" fill="none" stroke="currentColor" stroke-width="2"/>
+            <text x="276" y="89" text-anchor="middle" font-size="9.5" fill="currentColor">поиск</text>
+          </g>
+        </svg>
+        <figcaption><strong>Зачем:</strong> источники обычно описывают общую картину, а не отвечают на узкий вопрос напрямую.</figcaption>
+      </figure>
+      <div class="example"><b>Пример:</b> общий вопрос про разницу времён находит и правило, и примеры — не только частный случай.</div>
+    </article>
+
+    <article class="card card--hy">
+      <div class="card-head">
+        <span class="card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0-3.5 10.9c.5.4.5 1 .5 1.6v.5h6v-.5c0-.6 0-1.2.5-1.6A6 6 0 0 0 12 3Z"/><line x1="10" y1="20" x2="14" y2="20"/><line x1="11" y1="22" x2="13" y2="22"/></svg>
+        </span>
+        <h2>HyDE</h2>
+      </div>
+      <figure>
+        <svg class="diagram" viewBox="0 0 300 118" role="img" aria-label="Вопрос через LLM превращается в гипотетический ответ, а по нему уже ищутся похожие документы">
+          <defs><marker id="aHY" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="currentColor"/></marker></defs>
+          <g>
+            <rect x="2" y="44" width="60" height="30" rx="6" fill="none" stroke="currentColor" stroke-width="1.8"/>
+            <text x="32" y="63" text-anchor="middle" font-size="10" fill="currentColor">вопрос</text>
+          </g>
+          <line x1="62" y1="59" x2="92" y2="59" stroke="currentColor" stroke-width="1.6" marker-end="url(#aHY)"/>
+          <circle cx="110" cy="59" r="20" fill="none" stroke="currentColor" stroke-width="2"/>
+          <text x="110" y="63" text-anchor="middle" font-size="10" fill="currentColor">LLM</text>
+          <line x1="130" y1="59" x2="160" y2="59" stroke="currentColor" stroke-width="1.6" marker-end="url(#aHY)"/>
+          <g class="accent">
+            <rect x="164" y="10" width="86" height="98" rx="4" fill="none" stroke="currentColor" stroke-width="2.2"/>
+            <line x1="176" y1="30" x2="238" y2="30" stroke="currentColor" stroke-width="1.4"/>
+            <line x1="176" y1="44" x2="238" y2="44" stroke="currentColor" stroke-width="1.4"/>
+            <line x1="176" y1="58" x2="220" y2="58" stroke="currentColor" stroke-width="1.4"/>
+            <text x="207" y="94" text-anchor="middle" font-size="9" fill="currentColor">гипот. ответ</text>
+          </g>
+          <line x1="250" y1="59" x2="280" y2="59" stroke="currentColor" stroke-width="1.6" marker-end="url(#aHY)"/>
+          <path d="M282 44 v30 a14 14 0 0 0 14 0 v-30 a14 6 0 0 0 -14 0" fill="none" stroke="currentColor" stroke-width="1.6"/>
+          <ellipse cx="289" cy="44" rx="7" ry="6" fill="none" stroke="currentColor" stroke-width="1.6"/>
+        </svg>
+        <figcaption><strong>Зачем:</strong> документы в базе по форме ближе к «ответу», чем к «вопросу» — так эмбеддинги лучше совпадают.</figcaption>
+      </figure>
+      <div class="example"><b>Пример:</b> «что такое passive voice» → сгенерированный абзац-объяснение → ищем документы, похожие на этот абзац.</div>
+    </article>
+
+  </main>
+
+  <div class="takeaway">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 L14.5 8.5 L21.5 9 L16 13.5 L18 20.5 L12 16.5 L6 20.5 L8 13.5 L2.5 9 L9.5 8.5 Z"/></svg>
+    <p><b>Для проекта:</b> из всех пяти реально пригодится Decomposition — несколько выявленных пробелов, несколько отдельных запросов. Остальное — про запас, на случай если простого dense-поиска не хватит.</p>
+  </div>
+
+  <p class="credit">конспект по видео Lance Martin, «RAG From Scratch» · educore-analytics, Stage 4 (retrieval)</p>
+
+</div>

@@ -4,7 +4,7 @@ import httpx
 import pytest
 
 from app.educore_client import fetch_classes, fetch_students, fetch_test_attempts, fetch_tests
-from app.settings import EDUCORE_API_KEY, EDUCORE_HOST
+from config.settings import EDUCORE_API_KEY, EDUCORE_HOST
 
 FAKE_TEST_ATTEMPTS_RESPONSE = [
     {
