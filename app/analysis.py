@@ -1,20 +1,59 @@
-from app.formatting import format_class_responses, format_student_responses
-from app.prompts import CLASS_GAP_ANALYSIS_PROMPT, STUDENT_GAP_ANALYSIS_PROMPT
+from app.formatting import format_class_responses, format_student_responses, format_mistake_with_exercises
+from app.prompts import CLASS_GAP_ANALYSIS_PROMPT, STUDENT_GAP_ANALYSIS_PROMPT, FIND_RECOMMENDED_EXERCISES_PROMPT
 from app.providers import make_request_to_LLM
-from app.models import Mistakes, Mistake
+from app.models import Mistakes, RecommendedExercise, RecommendedExercises, MistakeWithExercises, FinalRecommendation
 from app.retrieval import get_exercises
+from common.models import Exercise
+
+def build_mistake_lookup(mistakes_with_exercises: list[MistakeWithExercises]) -> dict[int, MistakeWithExercises]:
+    return {item.index: item for item in mistakes_with_exercises}
+
+def build_exercise_lookup(mistakes_with_exercises: list[MistakeWithExercises]) -> dict[int, Exercise]:
+    return {
+        exercise.id: exercise
+        for item in mistakes_with_exercises
+        for exercise in item.exercises
+    }
+
+def build_final_recommendation(
+        rec: RecommendedExercise,
+        mistake_lookup: dict[int, MistakeWithExercises],
+        exercise_lookup: dict[int, Exercise],
+    ) -> FinalRecommendation:
+    description = mistake_lookup[rec.index].mistake.description if rec.index in mistake_lookup else "No description available"
+    best_exercise = exercise_lookup.get(rec.best_exercise_id) if rec.best_exercise_id is not None else None
+    other_exercises = [exercise_lookup[eid] for eid in rec.other_exercise_ids if eid in exercise_lookup]
+    return FinalRecommendation(description=description, best_exercise=best_exercise, other_exercises=other_exercises)
+
+def build_final_recommendations(
+        mistakes_with_recommended_exercises: RecommendedExercises,
+        mistakes_with_exercises: list[MistakeWithExercises],
+    ) -> list[FinalRecommendation]:
+    exercise_lookup = build_exercise_lookup(mistakes_with_exercises)
+    mistake_lookup = build_mistake_lookup(mistakes_with_exercises)
+    return [
+        build_final_recommendation(rec, mistake_lookup, exercise_lookup)
+        for rec in mistakes_with_recommended_exercises.recommendations
+    ]
+
+async def process_analysis(formatted_responses, system_prompt):
+    mistakes = await make_request_to_LLM(formatted_responses, system_prompt, Mistakes)
+    mistakes_with_exercises = await get_exercises(mistakes)
+    if not mistakes_with_exercises:
+        return []
+    mistakes_with_recommended_exercises = await make_request_to_LLM(
+        format_mistake_with_exercises(mistakes_with_exercises),
+        FIND_RECOMMENDED_EXERCISES_PROMPT,
+        RecommendedExercises)
+    return build_final_recommendations(mistakes_with_recommended_exercises, mistakes_with_exercises)
 
 async def analyse_student(responses, subject: str = "english", language: str = "English"):
     formatted_responses = format_student_responses(responses)
     system_prompt = STUDENT_GAP_ANALYSIS_PROMPT.format(subject=subject, language=language)
-    reply = await make_request_to_LLM(formatted_responses, system_prompt, Mistakes)
-    reply_with_exercises = await get_exercises(reply)
-    return reply_with_exercises
+    return await process_analysis(formatted_responses, system_prompt)
 
 
 async def analyse_class(responses, subject: str = "english", language: str = "English"):
     formatted_responses = format_class_responses(responses)
     system_prompt = CLASS_GAP_ANALYSIS_PROMPT.format(subject=subject, language=language)
-    reply = await make_request_to_LLM(formatted_responses, system_prompt, Mistakes)
-    reply_with_exercises = await get_exercises(reply)
-    return reply_with_exercises
+    return await process_analysis(formatted_responses, system_prompt)

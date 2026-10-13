@@ -1,6 +1,4 @@
-import bleach
 import httpx
-import markdown
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.templating import Jinja2Templates
 
@@ -9,28 +7,6 @@ from app.educore_client import fetch_classes, fetch_students, fetch_test_attempt
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
-
-ALLOWED_RESULT_TAGS = [
-    "p",
-    "strong",
-    "em",
-    "ul",
-    "ol",
-    "li",
-    "h1",
-    "h2",
-    "h3",
-    "h4",
-    "h5",
-    "h6",
-    "a",
-    "code",
-    "pre",
-    "blockquote",
-    "br",
-    "hr",
-]
-ALLOWED_RESULT_ATTRIBUTES = {"a": ["href", "title"]}
 
 
 @router.get("/")

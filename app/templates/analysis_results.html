@@ -9,22 +9,29 @@
       <ul class="card-list">
         {% for result in analysis_results %}
           <li>
-            <h2>{{ result.mistake.topic }}</h2>
-            <p>{{ result.mistake.description }}</p>
-            {% if result.exercises %}
-              <h3>Recommended Exercises:</h3>
-              <ul>
-                {% for exercise in result.exercises %}
-                  <li>
-                    <details>
-                      <summary>Exercise {{ exercise.number }}</summary>
-                      <p>{{ exercise.text }}</p>
-                    </details>
-                  </li>
-                {% endfor %}
-              </ul>
+            <p>{{ result.description }}</p>
+            {% if result.best_exercise %}
+              <details>
+                <summary>Exercise {{ result.best_exercise.number }}</summary>
+                <p>{{ result.best_exercise.text }}</p>
+              </details>
             {% else %}
-              <p>No recommended exercises found.</p>
+              <p>No recommended exercise found.</p>
+            {% endif %}
+            {% if result.other_exercises %}
+              <details>
+                <summary>Other exercises</summary>
+                <ul>
+                  {% for exercise in result.other_exercises %}
+                    <li>
+                      <details>
+                        <summary>Exercise {{ exercise.number }}</summary>
+                        <p>{{ exercise.text }}</p>
+                      </details>
+                    </li>
+                  {% endfor %}
+                </ul>
+              </details>
             {% endif %}
           </li>
         {% endfor %}
