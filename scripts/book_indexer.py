@@ -1,27 +1,34 @@
-from dotenv import load_dotenv
-from langchain.messages import HumanMessage
-from langchain.agents import create_agent
-from langchain_google_genai import ChatGoogleGenerativeAI
-from models import ChapterIndex
-from pathlib import Path
 import base64
 import json
+from pathlib import Path
+
+from dotenv import load_dotenv
+from langchain.agents import create_agent
+from langchain.messages import HumanMessage
+from langchain_google_genai import ChatGoogleGenerativeAI
+from models import ChapterIndex
 
 load_dotenv()
+
 
 def get_files_list(folder):
     folder_path = Path(folder)
     return sorted([f.name for f in folder_path.iterdir() if f.is_file()])
+
 
 def get_file(filepath):
     with open(filepath, "rb") as f:
         pdf_b64 = base64.b64encode(f.read()).decode("utf-8")
     return pdf_b64
 
+
 def build_agent():
-    return create_agent(model='gpt-5-mini',
-                     system_prompt="You are analyzing pages from an English grammar workbook.",
-                     response_format=ChapterIndex)
+    return create_agent(
+        model="gpt-5-mini",
+        system_prompt="You are analyzing pages from an English grammar workbook.",
+        response_format=ChapterIndex,
+    )
+
 
 def build_gemini_agent():
     model = ChatGoogleGenerativeAI(model="gemini-3.8-flash")
@@ -32,16 +39,24 @@ def build_gemini_agent():
         response_format=ChapterIndex,
     )
 
+
 def convert_text_to_models(agent, file, filename):
-    question = HumanMessage(content=[
-        {"type": "text", "text": "Go through every page of this chapter and extract every exercise you find, following the schema."},
-        {"type": "file", "base64": file, "mime_type": "application/pdf", "filename": filename}
-    ])
+    question = HumanMessage(
+        content=[
+            {
+                "type": "text",
+                "text": "Go through every page of this chapter and extract every exercise you find, "
+                "following the schema.",
+            },
+            {"type": "file", "base64": file, "mime_type": "application/pdf", "filename": filename},
+        ]
+    )
 
     response = agent.invoke({"messages": [question]})
     result = response["structured_response"]
     result.source_file = filename
     return result
+
 
 def convert_data_to_json(data, output_path="index.json"):
     path = Path(output_path)
@@ -49,11 +64,13 @@ def convert_data_to_json(data, output_path="index.json"):
     existing.append(data.model_dump(mode="json"))
     path.write_text(json.dumps(existing, indent=2, ensure_ascii=False), encoding="utf-8")
 
+
 def already_processed(output_path="index.json"):
     path = Path(output_path)
     if not path.exists():
         return set()
     return {entry["source_file"] for entry in json.loads(path.read_text(encoding="utf-8"))}
+
 
 filepath = "data/textbooks/english/grammatika_golitsynskiy_chapters"
 files = get_files_list(filepath)

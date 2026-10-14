@@ -1,18 +1,20 @@
-from sqlalchemy import String, Text, ForeignKey
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from pgvector.sqlalchemy import Vector
+from sqlalchemy import ForeignKey, String, Text
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
 class Base(DeclarativeBase):
     pass
 
+
 class Chapter(Base):
     __tablename__ = "chapters"
 
-    id: Mapped[int] = mapped_column(primary_key=True) 
+    id: Mapped[int] = mapped_column(primary_key=True)
     topic: Mapped[str] = mapped_column(String(255), nullable=False)
-    
-    exercises: Mapped[list["Exercise"]] = relationship("Exercise", back_populates="chapter")
+
+    exercises: Mapped[list["Exercise"]] = relationship("Exercise", back_populates="chapter")  # noqa: UP037
+
 
 class Exercise(Base):
     __tablename__ = "exercises"
@@ -30,5 +32,5 @@ class Exercise(Base):
     embedded_summary: Mapped[list[float]] = mapped_column(Vector(768), nullable=False)
     needs_review: Mapped[bool] = mapped_column(nullable=False)
     review_reason: Mapped[str] = mapped_column(Text, nullable=True)
-    
-    chapter: Mapped["Chapter"] = relationship("Chapter", back_populates="exercises")
+
+    chapter: Mapped[Chapter] = relationship("Chapter", back_populates="exercises")

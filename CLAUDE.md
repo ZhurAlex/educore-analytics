@@ -10,24 +10,30 @@ answer carries the same kind of signal as a `long_text` mistake — to detect le
 gaps (grammar, vocabulary, verb tense, etc.) and generate teacher-facing
 recommendations, per student and per class. See `README.md` for the one-paragraph pitch.
 
-**Status: MVP working end-to-end.** FastAPI service, stateless — no database; every
-request re-reads from `educore`'s API, nothing persisted here. A server-rendered web UI
-(Jinja2, no separate frontend build) walks a teacher through class → analysis type →
-student/test → result; the result calls an LLM (Gemini, falling back to Mistral) and
-renders the markdown recommendation as HTML.
-
-**In progress:** RAG-based homework generation (uses identified gaps to retrieve
-relevant textbook sections and generate personalized homework) — the first feature that
-needs persistence (Postgres + `pgvector`, breaking the stateless design above on
-purpose). Plan: `docs/RAG_PLAN.md`.
+**Status: MVP working end-to-end**, including a RAG-based homework recommendation
+pipeline. FastAPI service with a server-rendered web UI (Jinja2, no separate frontend
+build) that walks a teacher through class → analysis type → student/test → result:
+gap analysis (Gemini → Mistral → OpenAI fallback, structured output) identifies
+learning gaps from the student's/class's answer history, retrieval (Postgres +
+`pgvector`, dual-embedding weighted RRF over textbook exercise `summary`/`sub_topic`)
+finds matching exercises, and a second LLM pass picks the best match per gap before
+rendering the recommendation to the teacher. Persistence (Postgres) was added
+specifically for this feature — everything else in the service stays stateless,
+re-reading from `educore`'s API on every request.
 
 ## Commands
 
 ```bash
 poetry install                        # install deps (+ dev group: ruff)
                                        # fill in .env: EDUCORE_HOST, EDUCORE_API_KEY,
-                                       # GEMINI_API_KEY, MISTRAL_API_KEY — settings.py
-                                       # fails fast at import time if any is missing
+                                       # GEMINI_API_KEY, MISTRAL_API_KEY, OPENAI_API_KEY,
+                                       # POSTGRES_* — settings.py fails fast at import
+                                       # time if any of these except OPENAI_API_KEY is
+                                       # missing (that one's read directly by LangChain,
+                                       # not threaded through settings.py)
+
+docker compose up -d                  # Postgres (pgvector/pgvector image)
+poetry run alembic upgrade head       # creates chapters/exercises tables
 
 poetry run uvicorn app.main:app --reload  # dev server, localhost:8000, auto-reload
 poetry run python -m app.main             # same, no reload — NOT `python app/main.py`:
@@ -73,16 +79,13 @@ via `Jinja2Templates` (`app/templates/`), no `response_class` overrides needed s
 4. `GET /students/{student_id}/gap-analysis` / `GET /class/{test_id}/class-analysis` —
    runs the actual analysis. Shared by `render_analysis()`: empty `responses` →
    `no_results.html`; otherwise calls the given `analyse_student`/`analyse_class`
-   function, converts the LLM's markdown reply to HTML (`markdown.markdown()`), then
-   **sanitizes it** through `bleach.clean()` (allow-list of tags/attributes,
-   `ALLOWED_RESULT_TAGS`/`ALLOWED_RESULT_ATTRIBUTES` in `routes.py`) before rendering
-   `analysis_results.html` with `{{ result_html | safe }}`. The sanitizing step matters
-   because the LLM's reply isn't trusted content — its prompt is built from student
-   answer text (`formatting.py`), so a student could type something that gets echoed
-   back into the LLM's output and, without sanitizing, rendered as live HTML/JS in a
-   teacher's browser. `| safe` opts out of Jinja2's default auto-escaping — safe here
-   specifically because `bleach.clean()` already ran, not because the content is
-   inherently trustworthy.
+   function (see `analysis.py` below) and renders `analysis_results.html` with the
+   resulting `list[FinalRecommendation]`. No markdown rendering or HTML sanitizing
+   step — the LLM's output is structured data (Pydantic, not free text) by the time it
+   reaches the template, and every field is interpolated through plain `{{ }}` (never
+   `| safe`), so Jinja2's default auto-escaping alone is enough to keep student-typed
+   text that made it into an LLM reply from being rendered as live HTML/JS in a
+   teacher's browser.
 
 `get_students_attempts`/`get_class_attempts` differ only in which `fetch_attempts`
 filters and which `analyse_*` function to call — `render_analysis()` takes the
@@ -114,16 +117,57 @@ duplicating the fetch → empty-check → analyse → render sequence twice.
     numeric ranking deterministic and the prompt short.
   - Both exclude `pending`/`manual_check_required` responses (`IGNORED_GRADING_STATUSES`)
     — ungraded or failed-grading data shouldn't feed the analysis.
-- **`prompts.py`** — the two system prompt templates (`STUDENT_GAP_ANALYSIS_PROMPT`,
-  `CLASS_GAP_ANALYSIS_PROMPT`), parameterized by `{subject}`/`{language}` rather than a
-  cartesian list of pre-written personas per subject.
-- **`providers.py`** — the LLM layer, ported from `../TeacherBot`'s ports-and-adapters
-  design: `LLMProvider` (port) with `GeminiProvider`/`MistralProvider` (adapters) and
-  `FallbackProvider` (tries Gemini, falls back to Mistral on failure). Fully async.
-- **`analysis.py`** — orchestrates one analysis call: format → fill prompt template →
-  `provider.generate()`. `subject`/`language` are real parameters here, not hardcoded.
+- **`prompts.py`** — three system prompt templates: `STUDENT_GAP_ANALYSIS_PROMPT`,
+  `CLASS_GAP_ANALYSIS_PROMPT` (parameterized by `{subject}`/`{language}` rather than a
+  cartesian list of pre-written personas per subject — both instruct the model to
+  always write `topic` in English regardless of `{language}`, since it's used to
+  search an English-language textbook database, while `description` follows
+  `{language}`) and `FIND_RECOMMENDED_EXERCISES_PROMPT` (no `{subject}`/`{language}` —
+  it only ever sees already-retrieved exercise text and picks among given ids).
+- **`providers.py`** — the LLM layer: a single `make_request_to_LLM(message,
+  system_prompt, response_model)`, LangChain-based. Builds three
+  `.with_structured_output(response_model)`-wrapped chat models (Gemini, Mistral,
+  OpenAI) and chains them with `.with_fallbacks()` — Gemini first, Mistral and OpenAI
+  as fallbacks in that order — then calls `.ainvoke()` once. `response_model` is
+  applied to *all three* before chaining, not just the primary, so a mid-chain
+  fallback still returns the same structured shape the caller expects.
+- **`models.py`** — every data shape that isn't a database table (that's
+  `common/models.py` instead): Pydantic contracts the LLM must produce
+  (`Mistake`/`Mistakes` from gap analysis, `RecommendedExercise`/`RecommendedExercises`
+  from the second LLM pass) and plain internal dataclasses used to pass already-built
+  data between this project's own functions (`MistakeWithExercises` — one gap plus its
+  retrieved candidate exercises; `FinalRecommendation` — one gap's final description,
+  best exercise, and the rest of the candidates, what the template renders). Keeping
+  these three kinds of structure (DB rows, LLM contracts, internal DTOs) distinct
+  matters: putting ORM objects straight into an LLM-facing Pydantic model, for
+  instance, means the LLM's own schema ends up describing a field only this project's
+  code is supposed to fill in.
+- **`retrieval.py`** — `get_exercises(mistakes)`: for each identified gap, embeds its
+  `topic` (`gemini-embedding-2-preview`, 768 dims — must match the dimension used when
+  the textbook was indexed) and runs two independent `pgvector` similarity searches
+  against `common.models.Exercise` — one by `embedded_summary`, one by
+  `embedded_sub_topic` — combined via weighted Reciprocal Rank Fusion
+  (`reciprocal_rank_fusion`, sub-topic weighted higher — it's the more reliable
+  grouping signal). A short topic label and a specific, distinguishing exercise
+  summary cluster differently in embedding space; searching `summary` alone, in
+  practice, missed exercises on the exact same grammar point that just happened to be
+  worded around different example content — the two-field fusion recovers those.
+- **`analysis.py`** — `process_analysis` is a two-LLM-call pipeline, not one: gap
+  analysis (`make_request_to_LLM` → `Mistakes`) → retrieval (`get_exercises`, returns
+  `[]` early if no gaps were found — no second LLM call to recommend exercises for
+  nothing) → a second `make_request_to_LLM` call that picks the best-matching
+  candidate per gap (`RecommendedExercises`) → `build_final_recommendations` resolves
+  each recommendation's `best_exercise_id`/`other_exercise_ids` back to the actual
+  `Exercise` rows already fetched in the retrieval step (no second database query —
+  the candidates are already in memory) and reattaches the original gap's
+  `description` (looked up by `index`, a position the LLM is asked to echo back
+  rather than re-type the gap's text, which it isn't asked to reproduce verbatim).
+  `analyse_student`/`analyse_class` differ only in which `format_*` function and which
+  prompt they feed into this same pipeline.
 - **`settings.py`** — loads `.env` once and validates every required var is present at
   import time (raises immediately, not deep inside some later HTTP call).
+  `OPENAI_API_KEY` is deliberately not one of them — nothing here reads it directly,
+  `langchain-openai`'s `ChatOpenAI` picks it up from the environment on its own.
 
 ### Tests
 
@@ -137,13 +181,25 @@ duplicating the fetch → empty-check → analyse → render sequence twice.
 - **`tests/fixtures/`** — shared parametrize data (e.g. `formatting_cases.py`), kept
   out of `tests/` itself so plain `test_*.py` files stay easy to pick out from a
   directory listing.
-- Provider tests (`GeminiProvider`/`MistralProvider`) patch the SDK client classes
-  where they're *imported* (`app.providers.Mistral`), not where they're *defined*
-  (`mistralai.client.Mistral`) — `from x import Y` binds a separate name in the
-  importing module, so patching the original definition doesn't affect it.
-- `FallbackProvider` tests use a hand-written `FakeProvider(LLMProvider)` instead of
-  mocking Gemini/Mistral — it only depends on the `LLMProvider` interface, so no SDK
-  mocking is needed to test its retry/fallback logic.
+- `make_request_to_LLM` tests patch the three LangChain chat classes where they're
+  *imported* (`app.providers.ChatGoogleGenerativeAI`, not
+  `langchain_google_genai.ChatGoogleGenerativeAI`) — same reason as always, `from x
+  import Y` binds a separate name in the importing module. All three must be patched
+  even when the test only cares about the Gemini path: `make_request_to_LLM`
+  constructs all three unconditionally before chaining `.with_fallbacks()`, and
+  `.env.test` has no `OPENAI_API_KEY`, so an unpatched `ChatOpenAI` would fail to
+  construct. Because each is a `MagicMock`, asserting on the chain (e.g.
+  `gemini.with_fallbacks.assert_called_once_with([mistral, openai])`) only verifies
+  *this project's* wiring, not LangChain's own fallback behavior — that's the
+  library's responsibility to get right, not something to re-test here.
+- `process_analysis` tests (`test_analysis.py`) patch `make_request_to_LLM` with a
+  `side_effect` list of two different return values — it's called twice per
+  request (gap analysis, then exercise recommendation) with two different
+  `response_model`s — plus `get_exercises`, so no real embedding/database calls
+  happen in a unit test.
+- Decorator stacking order is easy to get backwards: stacked `@patch` decorators are
+  applied bottom-up, so the mock for the decorator *closest to the function* becomes
+  the *first* parameter, not the last.
 
 ## Companion project: `../educore`
 

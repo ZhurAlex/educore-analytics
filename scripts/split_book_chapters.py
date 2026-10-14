@@ -1,5 +1,6 @@
-import pymupdf
 from pathlib import Path
+
+import pymupdf
 
 
 def chapter_page_ranges(chapter_pages, total_pages):
@@ -8,10 +9,7 @@ def chapter_page_ranges(chapter_pages, total_pages):
     last chapter's end is total_pages, not another entry in chapter_pages, so
     every entry is a real chapter and none is lost as a mere terminator."""
     ends = chapter_pages[1:] + [total_pages + 1]
-    return [
-        (start - 1, end - 1)
-        for start, end in zip(chapter_pages, ends)
-    ]
+    return [(start - 1, end - 1) for start, end in zip(chapter_pages, ends)]
 
 
 def save_chapter_pdf(source_path, start_page, end_page, output_path):
@@ -31,6 +29,7 @@ def split_pdf_into_chapters(book_name, doc_path, chapter_pages):
         save_chapter_pdf(source_path, start_page, end_page, output_path)
         print(f"Chapter {num} saved as {output_path.name}")
 
+
 def split_large_chapter(source_path, output_dir, name_prefix, pages_per_part=15):
     doc = pymupdf.open(source_path)
     for i, start in enumerate(range(0, doc.page_count, pages_per_part), start=1):
@@ -38,13 +37,43 @@ def split_large_chapter(source_path, output_dir, name_prefix, pages_per_part=15)
         output_path = Path(output_dir) / f"{name_prefix}_part{i}.pdf"
         save_chapter_pdf(source_path, start, end, output_path)
 
+
 book_name = "grammatika_golitsynskiy"
-doc_path = f"data/textbooks/english"
-chapter_pages = [5, 71, 79, 95, 101, 111, 128, 234, 256, 292, 303, 323, 342, 348, 370, 378, 393, 445, 450, 451, 539, 567]
+doc_path = "data/textbooks/english"
+chapter_pages = [
+    5,
+    71,
+    79,
+    95,
+    101,
+    111,
+    128,
+    234,
+    256,
+    292,
+    303,
+    323,
+    342,
+    348,
+    370,
+    378,
+    393,
+    445,
+    450,
+    451,
+    539,
+    567,
+]
 
 # split_pdf_into_chapters(book_name, doc_path, chapter_pages)
 
-split_large_chapter("data/textbooks/english/grammatika_golitsynskiy_chapters/chapter_1_4.pdf",
-                     "data/textbooks/english/grammatika_golitsynskiy_chapters", "chapter_1_4")
-split_large_chapter("data/textbooks/english/grammatika_golitsynskiy_chapters/chapter_7_127.pdf",
-                     "data/textbooks/english/grammatika_golitsynskiy_chapters", "chapter_7_127")
+split_large_chapter(
+    "data/textbooks/english/grammatika_golitsynskiy_chapters/chapter_1_4.pdf",
+    "data/textbooks/english/grammatika_golitsynskiy_chapters",
+    "chapter_1_4",
+)
+split_large_chapter(
+    "data/textbooks/english/grammatika_golitsynskiy_chapters/chapter_7_127.pdf",
+    "data/textbooks/english/grammatika_golitsynskiy_chapters",
+    "chapter_7_127",
+)

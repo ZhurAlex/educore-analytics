@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock, patch
 
 from app.providers import make_request_to_LLM
 
+
 @patch("app.providers.ChatGoogleGenerativeAI")
 @patch("app.providers.ChatMistralAI")
 @patch("app.providers.ChatOpenAI")
