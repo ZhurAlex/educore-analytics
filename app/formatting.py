@@ -1,5 +1,7 @@
 from collections import Counter, defaultdict
 
+from app.models import MistakeWithExercises
+
 IGNORED_GRADING_STATUSES = {"pending", "manual_check_required"}
 
 
@@ -81,3 +83,21 @@ def format_class_responses(attempts):
     answers_dictionary = attempts_to_dict(attempts)
     header = [f'Test: "{attempts[0]["test"]["title"]}"\n']
     return "\n".join(header + [format_class_attempt(ans) for ans in answers_dictionary if ans["wrong_answers"] > 0])
+
+
+########################################################################################################
+
+
+def format_mistake_with_exercises(mistakes: list[MistakeWithExercises]) -> str:
+    lines = ["List of mistakes with candidate exercises:"]
+    for item in mistakes:
+        lines.extend(
+            [
+                f"Mistake {item.index}: {item.mistake.topic}",
+                f"Description: {item.mistake.description}",
+                "Candidate exercises:",
+            ]
+        )
+        for exercise in item.exercises:
+            lines.append(f"- id={exercise.id}, #{exercise.number} ({exercise.task_type}): {exercise.text}")
+    return "\n".join(lines)

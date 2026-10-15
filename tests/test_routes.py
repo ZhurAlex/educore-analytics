@@ -4,7 +4,7 @@ import httpx
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.providers import LLMResponse
+from app.models import FinalRecommendation
 
 client = TestClient(app)
 
@@ -54,7 +54,9 @@ def test_analysis_configuration_route():
 @patch("app.routes.fetch_test_attempts", new_callable=AsyncMock)
 def test_gap_analysis_returns_html_text(mock_fetch, mock_analyse):
     mock_fetch.return_value = [{"id": 1}]
-    mock_analyse.return_value = LLMResponse(text="Recommendation text", provider_name="X", tokens_used=1)
+    mock_analyse.return_value = [
+        FinalRecommendation(description="Recommendation text", best_exercise=None, other_exercises=[])
+    ]
 
     response = client.get("/students/1/gap-analysis")
 
@@ -67,7 +69,9 @@ def test_gap_analysis_returns_html_text(mock_fetch, mock_analyse):
 @patch("app.routes.fetch_test_attempts", new_callable=AsyncMock)
 def test_gap_analysis_passes_subject_and_language(mock_fetch, mock_analyse):
     mock_fetch.return_value = [{"id": 1}]
-    mock_analyse.return_value = LLMResponse(text="Recommendation text", provider_name="X", tokens_used=1)
+    mock_analyse.return_value = [
+        FinalRecommendation(description="Recommendation text", best_exercise=None, other_exercises=[])
+    ]
 
     client.get("/students/1/gap-analysis", params={"subject": "math", "language": "English"})
 
@@ -113,7 +117,9 @@ def test_gap_analysis_propagates_educore_connection_error(mock_fetch):
 @patch("app.routes.fetch_test_attempts", new_callable=AsyncMock)
 def test_class_analysis_returns_html_text(mock_fetch, mock_analyse):
     mock_fetch.return_value = [{"id": 1}]
-    mock_analyse.return_value = LLMResponse(text="Class recommendation", provider_name="X", tokens_used=1)
+    mock_analyse.return_value = [
+        FinalRecommendation(description="Class recommendation", best_exercise=None, other_exercises=[])
+    ]
 
     response = client.get("/class/1/class-analysis", params={"school_class_id": 5})
 
@@ -126,7 +132,9 @@ def test_class_analysis_returns_html_text(mock_fetch, mock_analyse):
 @patch("app.routes.fetch_test_attempts", new_callable=AsyncMock)
 def test_class_analysis_passes_subject_and_language(mock_fetch, mock_analyse):
     mock_fetch.return_value = [{"id": 1}]
-    mock_analyse.return_value = LLMResponse(text="Class recommendation", provider_name="X", tokens_used=1)
+    mock_analyse.return_value = [
+        FinalRecommendation(description="Class recommendation", best_exercise=None, other_exercises=[])
+    ]
 
     client.get("/class/1/class-analysis", params={"school_class_id": 5, "subject": "math", "language": "English"})
 
