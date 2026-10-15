@@ -125,12 +125,17 @@ duplicating the fetch → empty-check → analyse → render sequence twice.
   `{language}`) and `FIND_RECOMMENDED_EXERCISES_PROMPT` (no `{subject}`/`{language}` —
   it only ever sees already-retrieved exercise text and picks among given ids).
 - **`providers.py`** — the LLM layer: a single `make_request_to_LLM(message,
-  system_prompt, response_model)`, LangChain-based. Builds three
-  `.with_structured_output(response_model)`-wrapped chat models (Gemini, Mistral,
-  OpenAI) and chains them with `.with_fallbacks()` — Gemini first, Mistral and OpenAI
-  as fallbacks in that order — then calls `.ainvoke()` once. `response_model` is
-  applied to *all three* before chaining, not just the primary, so a mid-chain
-  fallback still returns the same structured shape the caller expects.
+  system_prompt, response_model)`, LangChain-based. Builds
+  `.with_structured_output(response_model)`-wrapped chat models for Gemini and
+  Mistral, and chains them with `.with_fallbacks()` — Gemini first, Mistral as
+  fallback — then calls `.ainvoke()` once. `response_model` is applied to each one
+  before chaining, not just the primary, so a mid-chain fallback still returns the
+  same structured shape the caller expects. OpenAI joins the fallback chain as a
+  third, last-resort link *only if* `OPENAI_API_KEY` is actually set
+  (`os.getenv("OPENAI_API_KEY")`, checked at call time, not via `settings.py`) —
+  deliberately conditional: building a real `ChatOpenAI` unconditionally fails fast on
+  a missing key, which used to break the whole call before Gemini ever got a chance
+  to run.
 - **`models.py`** — every data shape that isn't a database table (that's
   `common/models.py` instead): Pydantic contracts the LLM must produce
   (`Mistake`/`Mistakes` from gap analysis, `RecommendedExercise`/`RecommendedExercises`
@@ -162,8 +167,12 @@ duplicating the fetch → empty-check → analyse → render sequence twice.
   the candidates are already in memory) and reattaches the original gap's
   `description` (looked up by `index`, a position the LLM is asked to echo back
   rather than re-type the gap's text, which it isn't asked to reproduce verbatim).
-  `analyse_student`/`analyse_class` differ only in which `format_*` function and which
-  prompt they feed into this same pipeline.
+  The id lookup is scoped to that specific gap's own candidates
+  (`mistake.exercises`), not the full cross-gap pool `exercise_lookup` is built
+  from — otherwise an id that was a real candidate for gap A, but never offered for
+  gap B, could still resolve successfully against the global map and get silently
+  attached to gap B's recommendation. `analyse_student`/`analyse_class` differ only
+  in which `format_*` function and which prompt they feed into this same pipeline.
 - **`settings.py`** — loads `.env` once and validates every required var is present at
   import time (raises immediately, not deep inside some later HTTP call).
   `OPENAI_API_KEY` is deliberately not one of them — nothing here reads it directly,
