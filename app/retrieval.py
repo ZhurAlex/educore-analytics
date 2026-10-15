@@ -1,5 +1,5 @@
+import asyncio
 import logging
-import time
 
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from sqlalchemy import select
@@ -25,7 +25,12 @@ async def search_exercises_by_summary(query_vector, k=FETCH_DEPTH):
 
 async def search_exercises_by_sub_topic(query_vector, k=FETCH_DEPTH):
     async with async_session() as session:
-        stmt = select(Exercise).order_by(Exercise.embedded_sub_topic.cosine_distance(query_vector)).limit(k)
+        stmt = (
+            select(Exercise)
+            .where(Exercise.embedded_sub_topic.isnot(None))
+            .order_by(Exercise.embedded_sub_topic.cosine_distance(query_vector))
+            .limit(k)
+        )
         result = await session.execute(stmt)
         return result.scalars().all()
 
@@ -34,9 +39,9 @@ def get_embeddings_model():
     return GoogleGenerativeAIEmbeddings(model="gemini-embedding-2-preview", output_dimensionality=768)
 
 
-def embed_text(text, embeddings_model):
-    vector = embeddings_model.embed_query(text)
-    time.sleep(EMBED_REQUEST_DELAY_SECONDS)
+async def embed_text(text, embeddings_model):
+    vector = await embeddings_model.aembed_query(text)
+    await asyncio.sleep(EMBED_REQUEST_DELAY_SECONDS)
     return vector
 
 
@@ -63,7 +68,7 @@ async def get_exercises(mistakes):
     results = []
     for i, mistake in enumerate(mistakes.mistakes, start=1):
         logger.info("[%d/%d] embedding topic: %s", i, len(mistakes.mistakes), mistake.topic)
-        embeded_topic = embed_text(mistake.topic, embeddings_model)
+        embeded_topic = await embed_text(mistake.topic, embeddings_model)
         logger.info("[%d/%d] embedded, searching...", i, len(mistakes.mistakes))
         summary_exercises = await search_exercises_by_summary(embeded_topic)
         sub_topic_exercises = await search_exercises_by_sub_topic(embeded_topic)

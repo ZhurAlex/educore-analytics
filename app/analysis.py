@@ -19,20 +19,30 @@ def build_final_recommendation(
     mistake_lookup: dict[int, MistakeWithExercises],
     exercise_lookup: dict[int, Exercise],
 ) -> FinalRecommendation:
-    description = (
-        mistake_lookup[rec.index].mistake.description if rec.index in mistake_lookup else "No description available"
+    mistake = mistake_lookup.get(rec.index)
+    description = mistake.mistake.description if mistake else "No description available"
+    candidate_ids = {exercise.id for exercise in mistake.exercises} if mistake else set()
+    best_exercise = (
+        exercise_lookup.get(rec.best_exercise_id)
+        if rec.best_exercise_id is not None and rec.best_exercise_id in candidate_ids
+        else None
     )
-    best_exercise = exercise_lookup.get(rec.best_exercise_id) if rec.best_exercise_id is not None else None
-    other_exercises = [exercise_lookup[eid] for eid in rec.other_exercise_ids if eid in exercise_lookup]
+    other_exercises = [
+        exercise_lookup[eid] for eid in rec.other_exercise_ids if eid in candidate_ids and eid in exercise_lookup
+    ]
     return FinalRecommendation(description=description, best_exercise=best_exercise, other_exercises=other_exercises)
 
 
 def build_final_recommendations(
+    # recommended_exercises: ids of recommended exercises for each mistake (both best and other candidates)
     mistakes_with_recommended_exercises: RecommendedExercises,
+    # mistakes_with_exercises: the actual exercises for each mistake (from the database)
     mistakes_with_exercises: list[MistakeWithExercises],
 ) -> list[FinalRecommendation]:
-    exercise_lookup = build_exercise_lookup(mistakes_with_exercises)
+    # dictionary with mistake index as key and MistakeWithExercises as value, for easy lookup
     mistake_lookup = build_mistake_lookup(mistakes_with_exercises)
+    # dictionary with exercise id as key and Exercise as value, for easy lookup
+    exercise_lookup = build_exercise_lookup(mistakes_with_exercises)
     return [
         build_final_recommendation(rec, mistake_lookup, exercise_lookup)
         for rec in mistakes_with_recommended_exercises.recommendations
@@ -40,10 +50,13 @@ def build_final_recommendations(
 
 
 async def process_analysis(formatted_responses, system_prompt):
+    # list of mistakes identified by the LLM
     mistakes = await make_request_to_LLM(formatted_responses, system_prompt, Mistakes)
+    # candidate exercises for each mistake, retrieved from the database
     mistakes_with_exercises = await get_exercises(mistakes)
     if not mistakes_with_exercises:
         return []
+    # recommended exercises, picked by the LLM from the retrieved candidates
     mistakes_with_recommended_exercises = await make_request_to_LLM(
         format_mistake_with_exercises(mistakes_with_exercises), FIND_RECOMMENDED_EXERCISES_PROMPT, RecommendedExercises
     )

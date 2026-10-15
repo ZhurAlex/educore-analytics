@@ -45,15 +45,15 @@ def test_reciprocal_rank_fusion(summary_exercises, sub_topic_exercises, kwargs, 
     assert [exercise.id for exercise in results] == expected_ids
 
 
-@patch("app.retrieval.time.sleep")
-def test_embed_text_returns_vector_from_embeddings_model(sleep_mock):
+@patch("app.retrieval.asyncio.sleep")
+async def test_embed_text_returns_vector_from_embeddings_model(sleep_mock):
     mock_model = MagicMock()
-    mock_model.embed_query.return_value = [0.1, 0.2, 0.3]
+    mock_model.aembed_query = AsyncMock(return_value=[0.1, 0.2, 0.3])
 
-    result = embed_text("some text", mock_model)
+    result = await embed_text("some text", mock_model)
 
     assert result == [0.1, 0.2, 0.3]
-    mock_model.embed_query.assert_called_once_with("some text")
+    mock_model.aembed_query.assert_called_once_with("some text")
 
 
 @patch("app.retrieval.reciprocal_rank_fusion")
